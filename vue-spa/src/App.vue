@@ -4,6 +4,24 @@ import type { Product, ProductResponse } from './type';
 import NavBar from './components/NavBar.vue';
 import ProductCard from './components/ProductCard.vue';
 
+// --- Auth States ---
+const showAuthModal = ref(false);
+const isLoginMode = ref(true); 
+const isLoggedIn = ref(false);
+const authForm = ref({ email: '', password: '', name: '' });
+
+const handleAuth = () => {
+  console.log("Auth Data:", authForm.value);
+  isLoggedIn.value = true;
+  showAuthModal.value = false;
+  alert(isLoginMode.value ? 'Logged in successfully!' : 'Registered successfully!');
+};
+
+const logout = () => {
+  isLoggedIn.value = false;
+};
+
+// --- Your Original States ---
 const products = ref<Product[]>([]);
 const loading = ref(false);
 const isDark = ref(false);
@@ -68,9 +86,54 @@ onMounted(() => fetchProducts());
 
 <template>
   <div class="min-h-screen" style="background-color: #faf6f1; font-family: 'DM Sans', sans-serif;">
-    <NavBar :is-dark="isDark" @toggle-dark="toggleDark" />
+    
+    <!-- ✅ @open-login event listen කරනවා NavBar එකෙන් -->
+    <NavBar 
+      :is-dark="isDark" 
+      @toggle-dark="toggleDark" 
+      @open-login="showAuthModal = true" 
+    />
 
-    <!-- Hero Banner -->
+    <!-- Auth Modal -->
+    <div v-if="showAuthModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl fade-in-up" style="border: 1px solid #d4b896;">
+        <div class="flex justify-between items-center mb-6">
+          <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; color: #3d1a0e;">
+            {{ isLoginMode ? 'Login' : 'Register' }}
+          </h2>
+          <button @click="showAuthModal = false" class="text-3xl text-gray-400 hover:text-gray-600 transition-colors">&times;</button>
+        </div>
+
+        <form @submit.prevent="handleAuth" class="space-y-4">
+          <div v-if="!isLoginMode" class="fade-in-up">
+            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Full Name</label>
+            <input v-model="authForm.name" type="text" class="w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#7a4a2e]" placeholder="Your Name" required />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Email</label>
+            <input v-model="authForm.email" type="email" class="w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#7a4a2e]" placeholder="email@example.com" required />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Password</label>
+            <input v-model="authForm.password" type="password" class="w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#7a4a2e]" placeholder="••••••••" required />
+          </div>
+          
+          <button type="submit" class="w-full py-4 rounded-full font-bold transition-transform active:scale-95" 
+            style="background: #7a4a2e; color: #f0c070;">
+            {{ isLoginMode ? 'Sign In' : 'Create Account' }}
+          </button>
+        </form>
+
+        <div class="text-center mt-6 text-sm">
+          <span class="text-gray-600">{{ isLoginMode ? "New here?" : "Already a member?" }}</span>
+          <button @click="isLoginMode = !isLoginMode" class="ml-2 font-bold underline" style="color: #7a4a2e;">
+            {{ isLoginMode ? 'Register Now' : 'Back to Login' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero Section -->
     <section class="relative w-full overflow-hidden" style="background: linear-gradient(135deg, #7a4a2e 0%, #a0673a 50%, #c4855a 100%); min-height: 420px;">
       <div class="max-w-7xl mx-auto px-6 py-16 flex flex-col items-center justify-center text-center" style="min-height: 420px;">
         <p class="uppercase tracking-[0.4em] text-xs font-semibold mb-3" style="color: #f0c070;">
@@ -84,7 +147,6 @@ onMounted(() => fetchProducts());
         </p>
       </div>
 
-      <!-- Decorative wave -->
       <div style="position: absolute; bottom: -2px; left: 0; right: 0;">
         <svg viewBox="0 0 1440 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="width:100%; height:60px; display:block;">
           <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="#faf6f1"/>
@@ -93,8 +155,6 @@ onMounted(() => fetchProducts());
     </section>
 
     <main id="shop" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-
-      <!-- Discover Your Style Section -->
       <section class="mb-16">
         <div class="flex items-center gap-4 mb-6">
           <div style="flex: 1; height: 1px; background: #d4b896;"></div>
@@ -126,7 +186,6 @@ onMounted(() => fetchProducts());
         </div>
       </section>
 
-      <!-- Featured Jewellery Section -->
       <section class="mb-16">
         <div class="rounded-2xl mb-8 px-8 py-6 flex items-center justify-between flex-wrap gap-4"
              style="background: linear-gradient(90deg, #7a4a2e, #a0673a);">
@@ -166,7 +225,6 @@ onMounted(() => fetchProducts());
         </div>
       </section>
 
-      <!-- All Products Section -->
       <section>
         <div class="flex items-center gap-4 mb-6">
           <div style="flex: 1; height: 1px; background: #d4b896;"></div>
@@ -176,7 +234,6 @@ onMounted(() => fetchProducts());
           <div style="flex: 1; height: 1px; background: #d4b896;"></div>
         </div>
 
-        <!-- Category Filter Tabs -->
         <div class="flex gap-2 mb-8 flex-wrap">
           <button
             v-for="tab in [
@@ -195,7 +252,6 @@ onMounted(() => fetchProducts());
           </button>
         </div>
 
-        <!-- Skeleton -->
         <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <div v-for="n in 8" :key="n" class="rounded-2xl overflow-hidden animate-pulse" style="background:#ede0d4;">
             <div style="height: 208px; background: #d4b896;"></div>
@@ -210,7 +266,6 @@ onMounted(() => fetchProducts());
           </div>
         </div>
 
-        <!-- Product Grid -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <ProductCard
             v-for="(product, index) in filteredProducts"
@@ -222,16 +277,13 @@ onMounted(() => fetchProducts());
           />
         </div>
 
-        <!-- Empty state -->
         <div v-if="!loading && filteredProducts.length === 0" class="text-center py-20" style="color: #a0826d;">
           <p class="text-4xl mb-3">🛍️</p>
           <p class="text-lg font-medium">No products found.</p>
         </div>
       </section>
-
     </main>
 
-    <!-- Footer -->
     <footer class="mt-16 py-6 text-center text-sm" style="background:#7a4a2e; color:#d4a875;">
       <p style="font-family: 'Playfair Display', serif; font-size: 1rem; color: #f0c070;" class="mb-1">Golden Crest</p>
       <p>© 2025 Golden Crest. All rights reserved.</p>
@@ -241,9 +293,7 @@ onMounted(() => fetchProducts());
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=Playfair+Display:wght@600;700&display=swap');
-
 body { font-family: 'DM Sans', sans-serif; margin: 0; }
-
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }

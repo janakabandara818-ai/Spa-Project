@@ -1,6 +1,9 @@
 <script setup lang="ts">
 defineProps<{ isDark: boolean }>();
-const emit = defineEmits<{ (e: 'toggle-dark'): void }>();
+const emit = defineEmits<{
+  (e: 'toggle-dark'): void;
+  (e: 'open-login'): void;
+}>();
 </script>
 
 <template>
@@ -65,7 +68,10 @@ const emit = defineEmits<{ (e: 'toggle-dark'): void }>();
       </button>
 
       <!-- Login -->
-      <button class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all hover:shadow-lg hover:shadow-amber-500/25 active:scale-95">
+      <button
+        @click="emit('open-login')"
+        class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all hover:shadow-lg hover:shadow-amber-500/25 active:scale-95"
+      >
         Login
       </button>
     </div>
