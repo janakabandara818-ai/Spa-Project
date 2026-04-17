@@ -22,7 +22,7 @@ const emit = defineEmits<{
           <path d="M2 13l3 3 3.5-4L12 16l3.5-4L19 15l3-2-1 5H3l-1-5z"/>
         </svg>
       </div>
-      <h1 style="font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; line-height: 1;">
+      <h1 style="font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:700; letter-spacing:-0.5px; line-height:1;">
         <span class="text-amber-400">Golden</span><span class="text-white"> Crest</span>
       </h1>
     </div>
