@@ -11,11 +11,11 @@ defineProps<{
   <div :class="[
     'group rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col',
     isDark
-      ? 'bg-gray-900 border-gray-800 hover:border-gray-700 hover:shadow-black/40'
-      : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-gray-200/60'
+      ? 'bg-gray-900 border-gray-700 hover:border-amber-800 hover:shadow-black/60'
+      : 'bg-white border-gray-100 hover:border-amber-200 hover:shadow-amber-100/60'
   ]">
     <!-- Image -->
-    <div class="relative overflow-hidden bg-gray-50 h-48">
+    <div :class="['relative overflow-hidden h-48', isDark ? 'bg-gray-800' : 'bg-gray-50']">
       <img
         :src="product.thumbnail"
         :alt="product.title"
@@ -32,7 +32,7 @@ defineProps<{
       <!-- Rating badge -->
       <span :class="[
         'absolute top-2 right-2 text-[11px] font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1',
-        isDark ? 'bg-gray-800/90 text-yellow-400' : 'bg-white/90 text-yellow-500'
+        isDark ? 'bg-gray-900/90 text-amber-400' : 'bg-white/90 text-amber-500'
       ]">
         ★ {{ product.rating.toFixed(1) }}
       </span>
@@ -42,7 +42,7 @@ defineProps<{
     <div class="p-4 flex flex-col flex-1">
       <!-- Category -->
       <p class="text-[11px] uppercase tracking-widest font-medium mb-1"
-         :class="isDark ? 'text-indigo-400' : 'text-indigo-500'">
+         :class="isDark ? 'text-amber-500' : 'text-amber-700'">
         {{ product.category }}
       </p>
 
@@ -60,7 +60,7 @@ defineProps<{
       <!-- Price + CTA -->
       <div class="flex items-center justify-between">
         <div>
-          <span class="text-lg font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">
+          <span class="text-lg font-bold" :class="isDark ? 'text-amber-400' : 'text-gray-900'">
             ${{ product.price.toFixed(2) }}
           </span>
           <span v-if="product.discountPercentage >= 10"
@@ -72,8 +72,8 @@ defineProps<{
         <button :class="[
           'text-xs font-semibold px-3 py-1.5 rounded-lg transition-all active:scale-95',
           isDark
-            ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-            : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-md hover:shadow-indigo-500/30'
+            ? 'bg-amber-600 hover:bg-amber-500 text-white hover:shadow-md hover:shadow-amber-600/30'
+            : 'bg-[#7a4a2e] hover:bg-[#5c3520] text-[#f0c070] hover:shadow-md hover:shadow-amber-900/30'
         ]">
           Add to Cart
         </button>
@@ -81,7 +81,10 @@ defineProps<{
 
       <!-- Stock indicator -->
       <div class="mt-3 flex items-center gap-1.5">
-        <div :class="['w-1.5 h-1.5 rounded-full', product.stock > 10 ? 'bg-emerald-400' : product.stock > 0 ? 'bg-amber-400' : 'bg-red-400']"></div>
+        <div :class="[
+          'w-1.5 h-1.5 rounded-full',
+          product.stock > 10 ? 'bg-emerald-400' : product.stock > 0 ? 'bg-amber-400' : 'bg-red-400'
+        ]"></div>
         <span class="text-[11px]" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
           {{ product.stock > 10 ? 'In stock' : product.stock > 0 ? `Only ${product.stock} left` : 'Out of stock' }}
         </span>
