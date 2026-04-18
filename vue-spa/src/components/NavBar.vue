@@ -1,8 +1,13 @@
 <script setup lang="ts">
-defineProps<{ isDark: boolean }>();
+defineProps<{
+  isDark: boolean;
+  cartCount: number;
+}>();
+
 const emit = defineEmits<{
   (e: 'toggle-dark'): void;
   (e: 'open-login'): void;
+  (e: 'open-cart'): void;
 }>();
 </script>
 
@@ -56,14 +61,21 @@ const emit = defineEmits<{
         {{ isDark ? '☀️' : '🌙' }}
       </button>
 
-      <!-- Cart -->
-      <button :class="[
-        'w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95 relative',
-        isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-[#2e1f14] hover:bg-[#4a3020]'
-      ]">
+      <!-- Cart button — emits open-cart, shows live count -->
+      <button
+        @click="emit('open-cart')"
+        :class="[
+          'w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95 relative',
+          isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-[#2e1f14] hover:bg-[#4a3020]'
+        ]"
+        title="Open cart"
+      >
         🛒
-        <span class="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-          3
+        <span
+          v-if="cartCount > 0"
+          class="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center transition-all"
+        >
+          {{ cartCount > 9 ? '9+' : cartCount }}
         </span>
       </button>
 

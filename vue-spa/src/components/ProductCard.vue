@@ -1,10 +1,24 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { Product } from '../type';
 
-defineProps<{
+const props = defineProps<{
   product: Product;
   isDark: boolean;
 }>();
+
+const emit = defineEmits<{
+  (e: 'add-to-cart', product: Product): void;
+}>();
+
+// Button feedback state
+const added = ref(false);
+
+const handleAddToCart = () => {
+  emit('add-to-cart', props.product);
+  added.value = true;
+  setTimeout(() => { added.value = false; }, 1200);
+};
 </script>
 
 <template>
@@ -69,13 +83,20 @@ defineProps<{
             ${{ (product.price / (1 - product.discountPercentage / 100)).toFixed(2) }}
           </span>
         </div>
-        <button :class="[
-          'text-xs font-semibold px-3 py-1.5 rounded-lg transition-all active:scale-95',
-          isDark
-            ? 'bg-amber-600 hover:bg-amber-500 text-white hover:shadow-md hover:shadow-amber-600/30'
-            : 'bg-[#7a4a2e] hover:bg-[#5c3520] text-[#f0c070] hover:shadow-md hover:shadow-amber-900/30'
-        ]">
-          Add to Cart
+
+        <!-- Add to Cart button with feedback -->
+        <button
+          @click="handleAddToCart"
+          :class="[
+            'text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-300 active:scale-95 flex items-center gap-1',
+            added
+              ? (isDark ? 'bg-emerald-700 text-white' : 'bg-emerald-600 text-white')
+              : (isDark
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white hover:shadow-md hover:shadow-amber-600/30'
+                  : 'bg-[#7a4a2e] hover:bg-[#5c3520] text-[#f0c070] hover:shadow-md hover:shadow-amber-900/30')
+          ]"
+        >
+          <span>{{ added ? '✓ Added' : 'Add to Cart' }}</span>
         </button>
       </div>
 
