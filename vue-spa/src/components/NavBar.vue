@@ -9,6 +9,10 @@ const emit = defineEmits<{
   (e: 'open-login'): void;
   (e: 'open-cart'): void;
 }>();
+
+const goHome = () => {
+  window.location.reload();
+};
 </script>
 
 <template>
@@ -18,9 +22,13 @@ const emit = defineEmits<{
       ? 'bg-gray-950/95 border-gray-800 text-white'
       : 'bg-[#3d2b1f]/95 border-[#5a3e2b] text-white'
   ]">
-    <!-- Logo -->
-    <div class="flex items-center gap-2">
-      <div class="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/30">
+    <!-- Logo — click to refresh page -->
+    <div
+      class="flex items-center gap-2 cursor-pointer select-none"
+      @click="goHome"
+      title="Refresh page"
+    >
+      <div class="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/30 transition-transform hover:scale-110 active:scale-95">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" class="w-5 h-5">
           <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.38-1 1.73V7.5l6.5 4.5H16v1h-1v-1H9v1H8v-1H4.5L11 7.5V5.73A2 2 0 0 1 12 2z"/>
           <path d="M3 18h18v2H3z"/>
@@ -61,7 +69,7 @@ const emit = defineEmits<{
         {{ isDark ? '☀️' : '🌙' }}
       </button>
 
-      <!-- Cart button — emits open-cart, shows live count -->
+      <!-- Cart -->
       <button
         @click="emit('open-cart')"
         :class="[
@@ -73,7 +81,7 @@ const emit = defineEmits<{
         🛒
         <span
           v-if="cartCount > 0"
-          class="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center transition-all"
+          class="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
         >
           {{ cartCount > 9 ? '9+' : cartCount }}
         </span>
