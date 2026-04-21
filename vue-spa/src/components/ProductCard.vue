@@ -9,12 +9,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'add-to-cart', product: Product): void;
+  (e: 'view-detail', product: Product): void;
 }>();
 
-// Button feedback state
 const added = ref(false);
 
-const handleAddToCart = () => {
+const handleAddToCart = (e: MouseEvent) => {
+  e.stopPropagation(); // card click trigger වෙන්නේ නෑ
   emit('add-to-cart', props.product);
   added.value = true;
   setTimeout(() => { added.value = false; }, 1200);
@@ -22,12 +23,16 @@ const handleAddToCart = () => {
 </script>
 
 <template>
-  <div :class="[
-    'group rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col',
-    isDark
-      ? 'bg-gray-900 border-gray-700 hover:border-amber-800 hover:shadow-black/60'
-      : 'bg-white border-gray-100 hover:border-amber-200 hover:shadow-amber-100/60'
-  ]">
+  <!-- Whole card click → detail modal -->
+  <div
+    :class="[
+      'group rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col cursor-pointer',
+      isDark
+        ? 'bg-gray-900 border-gray-700 hover:border-amber-800 hover:shadow-black/60'
+        : 'bg-white border-gray-100 hover:border-amber-200 hover:shadow-amber-100/60'
+    ]"
+    @click="emit('view-detail', product)"
+  >
     <!-- Image -->
     <div :class="['relative overflow-hidden h-48', isDark ? 'bg-gray-800' : 'bg-gray-50']">
       <img
@@ -50,6 +55,16 @@ const handleAddToCart = () => {
       ]">
         ★ {{ product.rating.toFixed(1) }}
       </span>
+
+      <!-- Hover overlay hint -->
+      <div
+        class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        :style="isDark ? 'background:rgba(0,0,0,0.45);' : 'background:rgba(61,26,14,0.35);'"
+      >
+        <span class="text-white text-xs font-semibold tracking-widest uppercase px-4 py-2 rounded-full border border-white/40">
+          View Details
+        </span>
+      </div>
     </div>
 
     <!-- Content -->
@@ -77,26 +92,28 @@ const handleAddToCart = () => {
           <span class="text-lg font-bold" :class="isDark ? 'text-amber-400' : 'text-gray-900'">
             ${{ product.price.toFixed(2) }}
           </span>
-          <span v-if="product.discountPercentage >= 10"
-                class="ml-2 text-xs line-through"
-                :class="isDark ? 'text-gray-600' : 'text-gray-400'">
+          <span
+            v-if="product.discountPercentage >= 10"
+            class="ml-2 text-xs line-through"
+            :class="isDark ? 'text-gray-600' : 'text-gray-400'"
+          >
             ${{ (product.price / (1 - product.discountPercentage / 100)).toFixed(2) }}
           </span>
         </div>
 
-        <!-- Add to Cart button with feedback -->
+        <!-- Add to Cart — stopPropagation so card click doesn't fire -->
         <button
           @click="handleAddToCart"
           :class="[
-            'text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-300 active:scale-95 flex items-center gap-1',
+            'text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-300 active:scale-95',
             added
-              ? (isDark ? 'bg-emerald-700 text-white' : 'bg-emerald-600 text-white')
+              ? 'bg-emerald-600 text-white'
               : (isDark
                   ? 'bg-amber-600 hover:bg-amber-500 text-white hover:shadow-md hover:shadow-amber-600/30'
                   : 'bg-[#7a4a2e] hover:bg-[#5c3520] text-[#f0c070] hover:shadow-md hover:shadow-amber-900/30')
           ]"
         >
-          <span>{{ added ? '✓ Added' : 'Add to Cart' }}</span>
+          {{ added ? '✓ Added' : 'Add to Cart' }}
         </button>
       </div>
 

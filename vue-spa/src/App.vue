@@ -4,6 +4,7 @@ import type { Product, ProductResponse, CartItem } from './type';
 import NavBar from './components/NavBar.vue';
 import ProductCard from './components/ProductCard.vue';
 import CartDrawer from './components/CartDrawer.vue';
+import ProductDetailModal from './components/ProductDetailModal.vue';
 
 // --- Auth States ---
 const showAuthModal = ref(false);
@@ -49,16 +50,24 @@ const increaseQty = (id: number) => {
 const decreaseQty = (id: number) => {
   const item = cartItems.value.find(i => i.id === id);
   if (item) {
-    if (item.quantity <= 1) {
-      removeFromCart(id);
-    } else {
-      item.quantity--;
-    }
+    if (item.quantity <= 1) removeFromCart(id);
+    else item.quantity--;
   }
 };
 
 const removeFromCart = (id: number) => {
   cartItems.value = cartItems.value.filter(i => i.id !== id);
+};
+
+// --- Detail Modal State ---
+const selectedProduct = ref<Product | null>(null);
+
+const openDetail = (product: Product) => {
+  selectedProduct.value = product;
+};
+
+const closeDetail = () => {
+  selectedProduct.value = null;
 };
 
 // --- Core States ---
@@ -123,8 +132,8 @@ onMounted(() => fetchProducts());
 <template>
   <div
     class="min-h-screen transition-colors duration-300"
-    :style="isDark ? 'background-color: #0f0f0f;' : 'background-color: #faf6f1;'"
-    style="font-family: 'DM Sans', sans-serif;"
+    :style="isDark ? 'background-color:#0f0f0f;' : 'background-color:#faf6f1;'"
+    style="font-family:'DM Sans',sans-serif;"
   >
 
     <NavBar
@@ -146,18 +155,25 @@ onMounted(() => fetchProducts());
       @remove="removeFromCart"
     />
 
+    <!-- ✅ Product Detail Modal -->
+    <ProductDetailModal
+      :product="selectedProduct"
+      :is-dark="isDark"
+      @close="closeDetail"
+      @add-to-cart="addToCart"
+    />
+
     <!-- Auth Modal -->
     <div v-if="showAuthModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div :class="['rounded-2xl p-8 w-full max-w-md shadow-2xl fade-in-up border', isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#d4b896]']">
         <div class="flex justify-between items-center mb-6">
-          <h2 :style="`font-family: 'Playfair Display', serif; font-size: 1.8rem; color: ${isDark ? '#f0c070' : '#3d1a0e'};`">
+          <h2 :style="`font-family:'Playfair Display',serif; font-size:1.8rem; color:${isDark ? '#f0c070' : '#3d1a0e'};`">
             {{ isLoginMode ? 'Login' : 'Register' }}
           </h2>
           <button @click="showAuthModal = false" class="text-3xl transition-colors"
             :class="isDark ? 'text-gray-500 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'"
           >&times;</button>
         </div>
-
         <form @submit.prevent="handleAuth" class="space-y-4">
           <div v-if="!isLoginMode" class="fade-in-up">
             <label :class="['block text-xs font-bold uppercase mb-1', isDark ? 'text-gray-400' : 'text-gray-500']">Full Name</label>
@@ -182,7 +198,6 @@ onMounted(() => fetchProducts());
             {{ isLoginMode ? 'Sign In' : 'Create Account' }}
           </button>
         </form>
-
         <div class="text-center mt-6 text-sm">
           <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">
             {{ isLoginMode ? "New here?" : "Already a member?" }}
@@ -196,17 +211,17 @@ onMounted(() => fetchProducts());
     </div>
 
     <!-- Hero -->
-    <section class="relative w-full overflow-hidden" style="background: linear-gradient(135deg, #7a4a2e 0%, #a0673a 50%, #c4855a 100%); min-height: 420px;">
-      <div class="max-w-7xl mx-auto px-6 py-16 flex flex-col items-center justify-center text-center" style="min-height: 420px;">
-        <p class="uppercase tracking-[0.4em] text-xs font-semibold mb-3" style="color: #f0c070;">Celebrating Your Radiance</p>
-        <h1 style="font-family: 'Playfair Display', serif; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; color: #fff5e6; line-height: 1.2;" class="mb-4">
+    <section class="relative w-full overflow-hidden" style="background:linear-gradient(135deg,#7a4a2e 0%,#a0673a 50%,#c4855a 100%); min-height:420px;">
+      <div class="max-w-7xl mx-auto px-6 py-16 flex flex-col items-center justify-center text-center" style="min-height:420px;">
+        <p class="uppercase tracking-[0.4em] text-xs font-semibold mb-3" style="color:#f0c070;">Celebrating Your Radiance</p>
+        <h1 style="font-family:'Playfair Display',serif; font-size:clamp(2rem,5vw,3.5rem); font-weight:700; color:#fff5e6; line-height:1.2;" class="mb-4">
           Golden Crest Collection
         </h1>
-        <p class="mb-8 text-sm" style="color: #f0dfc0; max-width: 480px;">
+        <p class="mb-8 text-sm" style="color:#f0dfc0; max-width:480px;">
           Shirts, shoes, watches & fine jewellery — curated with elegance, crafted for you.
         </p>
       </div>
-      <div style="position: absolute; bottom: -2px; left: 0; right: 0;">
+      <div style="position:absolute; bottom:-2px; left:0; right:0;">
         <svg viewBox="0 0 1440 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="width:100%; height:60px; display:block;">
           <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" :fill="isDark ? '#0f0f0f' : '#faf6f1'"/>
         </svg>
@@ -244,6 +259,7 @@ onMounted(() => fetchProducts());
             :style="{ animationDelay: `${index * 55}ms` }"
             class="fade-in-up"
             @add-to-cart="addToCart"
+            @view-detail="openDetail"
           />
         </div>
       </section>
@@ -261,7 +277,7 @@ onMounted(() => fetchProducts());
           </div>
           <button
             @click="activeCategory = 'jewellery'"
-            style="border:1px solid #f0c070; color:#f0c070; background:transparent; padding:8px 24px; font-size:0.8rem; letter-spacing:0.12em; border-radius:50px; cursor:pointer; transition:all 0.2s;"
+            style="border:1px solid #f0c070; color:#f0c070; background:transparent; padding:8px 24px; font-size:0.8rem; letter-spacing:0.12em; border-radius:50px; cursor:pointer;"
           >VIEW ALL</button>
         </div>
 
@@ -284,6 +300,7 @@ onMounted(() => fetchProducts());
             :style="{ animationDelay: `${index * 55}ms` }"
             class="fade-in-up"
             @add-to-cart="addToCart"
+            @view-detail="openDetail"
           />
         </div>
       </section>
@@ -333,6 +350,7 @@ onMounted(() => fetchProducts());
             :style="{ animationDelay: `${index * 55}ms` }"
             class="fade-in-up"
             @add-to-cart="addToCart"
+            @view-detail="openDetail"
           />
         </div>
 
