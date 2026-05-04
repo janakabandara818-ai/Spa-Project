@@ -8,6 +8,7 @@ const emit = defineEmits<{
   (e: 'toggle-dark'): void;
   (e: 'open-login'): void;
   (e: 'open-cart'): void;
+  (e: 'search', query: string): void;
 }>();
 
 const goHome = () => {
@@ -22,7 +23,7 @@ const goHome = () => {
       ? 'bg-gray-950/95 border-gray-800 text-white'
       : 'bg-[#3d2b1f]/95 border-[#5a3e2b] text-white'
   ]">
-    <!-- Logo — click to refresh page -->
+    <!-- Logo -->
     <div
       class="flex items-center gap-2 cursor-pointer select-none"
       @click="goHome"
@@ -40,12 +41,13 @@ const goHome = () => {
       </h1>
     </div>
 
-    <!-- Search -->
+    <!-- ✅ Search — type කළාම emit('search') fire වෙනවා -->
     <div class="relative hidden sm:block">
       <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
       <input
         type="text"
         placeholder="Search products..."
+        @input="emit('search', ($event.target as HTMLInputElement).value)"
         :class="[
           'pl-9 pr-4 py-2 rounded-xl text-sm w-64 border transition-all focus:outline-none focus:ring-2 focus:ring-amber-500',
           isDark

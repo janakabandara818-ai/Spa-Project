@@ -71,12 +71,10 @@ const logout = () => {
 };
 
 // ─────────────────────────────────────────
-// ✅ Cart State — localStorage persistent
+// Cart State — localStorage persistent
 // ─────────────────────────────────────────
 const cartOpen = ref(false);
 
-// ✅ FIX: ref() වලට factory function දෙන්න බෑ
-// loadCart() කියලා වෙනම function එකක් හදලා call කරනවා
 const loadCart = (): CartItem[] => {
   try {
     const saved = localStorage.getItem('gc_cart');
@@ -88,12 +86,9 @@ const loadCart = (): CartItem[] => {
 
 const cartItems = ref<CartItem[]>(loadCart());
 
-// ✅ Cart change වෙන සෑම විටම localStorage වල save කරනවා
 watch(
   cartItems,
-  (newItems) => {
-    localStorage.setItem('gc_cart', JSON.stringify(newItems));
-  },
+  (newItems) => { localStorage.setItem('gc_cart', JSON.stringify(newItems)); },
   { deep: true }
 );
 
@@ -103,50 +98,40 @@ const cartCount = computed(() =>
 
 const addToCart = (product: Product) => {
   const existing = cartItems.value.find(i => i.id === product.id);
-  if (existing) {
-    existing.quantity++;
-  } else {
+  if (existing) { existing.quantity++; }
+  else {
     cartItems.value.push({
-      id:        product.id,
-      title:     product.title,
-      price:     product.price,
-      thumbnail: product.thumbnail,
-      quantity:  1,
+      id: product.id, title: product.title,
+      price: product.price, thumbnail: product.thumbnail, quantity: 1,
     });
   }
 };
 
-const increaseQty = (id: number) => {
-  const item = cartItems.value.find(i => i.id === id);
-  if (item) item.quantity++;
-};
-
-const decreaseQty = (id: number) => {
-  const item = cartItems.value.find(i => i.id === id);
-  if (item) {
-    if (item.quantity <= 1) removeFromCart(id);
-    else item.quantity--;
-  }
-};
-
-const removeFromCart = (id: number) => {
-  cartItems.value = cartItems.value.filter(i => i.id !== id);
-};
+const increaseQty    = (id: number) => { const item = cartItems.value.find(i => i.id === id); if (item) item.quantity++; };
+const decreaseQty    = (id: number) => { const item = cartItems.value.find(i => i.id === id); if (item) { if (item.quantity <= 1) removeFromCart(id); else item.quantity--; } };
+const removeFromCart = (id: number) => { cartItems.value = cartItems.value.filter(i => i.id !== id); };
 
 // ─────────────────────────────────────────
-// Detail Modal State
+// Detail Modal
 // ─────────────────────────────────────────
 const selectedProduct = ref<Product | null>(null);
 const openDetail  = (product: Product) => { selectedProduct.value = product; };
 const closeDetail = () => { selectedProduct.value = null; };
 
 // ─────────────────────────────────────────
-// Product State
+// Product + Search State
 // ─────────────────────────────────────────
 const products       = ref<Product[]>([]);
 const loading        = ref(false);
 const isDark         = ref(false);
 const activeCategory = ref<'all' | 'clothing' | 'jewellery'>('all');
+
+// ✅ Search query state
+const searchQuery = ref('');
+
+const handleSearch = (query: string) => {
+  searchQuery.value = query.trim().toLowerCase();
+};
 
 const toggleDark = () => {
   isDark.value = !isDark.value;
@@ -169,10 +154,8 @@ const fetchProducts = async () => {
       jewelleryRes.json() as Promise<ProductResponse>,
     ]);
     products.value = [
-      ...clothing.products,
-      ...shoes.products,
-      ...watches.products,
-      ...jewellery.products,
+      ...clothing.products, ...shoes.products,
+      ...watches.products,  ...jewellery.products,
     ];
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -181,13 +164,26 @@ const fetchProducts = async () => {
   }
 };
 
+// ✅ filteredProducts — category filter + search query දෙකම apply කරනවා
 const filteredProducts = computed(() => {
-  if (activeCategory.value === 'all') return products.value;
+  let result = products.value;
+
+  // Step 1: category filter
   if (activeCategory.value === 'clothing')
-    return products.value.filter(p => ['mens-shirts','mens-shoes','mens-watches'].includes(p.category));
-  if (activeCategory.value === 'jewellery')
-    return products.value.filter(p => p.category === 'womens-jewellery');
-  return products.value;
+    result = result.filter(p => ['mens-shirts','mens-shoes','mens-watches'].includes(p.category));
+  else if (activeCategory.value === 'jewellery')
+    result = result.filter(p => p.category === 'womens-jewellery');
+
+  // Step 2: search filter — title, brand, category match කරනවා
+  if (searchQuery.value) {
+    result = result.filter(p =>
+      p.title.toLowerCase().includes(searchQuery.value) ||
+      p.brand?.toLowerCase().includes(searchQuery.value) ||
+      p.category.toLowerCase().includes(searchQuery.value)
+    );
+  }
+
+  return result;
 });
 
 const clothingProducts = computed(() =>
@@ -197,7 +193,6 @@ const jewelleryProducts = computed(() =>
   products.value.filter(p => p.category === 'womens-jewellery').slice(0, 4)
 );
 
-// ✅ Mount — auth restore + fetch products
 onMounted(() => {
   const token = localStorage.getItem('gc_token');
   const user  = localStorage.getItem('gc_user');
@@ -216,31 +211,25 @@ onMounted(() => {
     style="font-family:'DM Sans',sans-serif;"
   >
 
+    <!-- ✅ @search event listen කරනවා -->
     <NavBar
       :is-dark="isDark"
       :cart-count="cartCount"
       @toggle-dark="toggleDark"
       @open-login="showAuthModal = true"
       @open-cart="cartOpen = true"
+      @search="handleSearch"
     />
 
-    <!-- Cart Drawer -->
     <CartDrawer
-      :is-open="cartOpen"
-      :is-dark="isDark"
-      :items="cartItems"
-      @close="cartOpen = false"
-      @increase="increaseQty"
-      @decrease="decreaseQty"
-      @remove="removeFromCart"
+      :is-open="cartOpen" :is-dark="isDark" :items="cartItems"
+      @close="cartOpen = false" @increase="increaseQty"
+      @decrease="decreaseQty" @remove="removeFromCart"
     />
 
-    <!-- Product Detail Modal -->
     <ProductDetailModal
-      :product="selectedProduct"
-      :is-dark="isDark"
-      @close="closeDetail"
-      @add-to-cart="addToCart"
+      :product="selectedProduct" :is-dark="isDark"
+      @close="closeDetail" @add-to-cart="addToCart"
     />
 
     <!-- Auth Modal -->
@@ -287,9 +276,7 @@ onMounted(() => {
           </p>
           <button @click="logout(); showAuthModal = false"
             class="w-full py-3 rounded-full font-bold text-sm transition-all active:scale-95"
-            style="background:#ef4444; color:#fff;">
-            Log Out
-          </button>
+            style="background:#ef4444; color:#fff;">Log Out</button>
         </div>
 
         <div class="text-center mt-6 text-sm">
@@ -333,96 +320,22 @@ onMounted(() => {
 
     <main id="shop" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
 
-      <!-- Discover Your Style -->
-      <section class="mb-16">
+      <!-- ✅ Search active වෙලා ඉන්නම් search results section show කරනවා -->
+      <section v-if="searchQuery" class="mb-16">
         <div class="flex items-center gap-4 mb-6">
           <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
-          <h2 :style="`font-family:'Playfair Display',serif; font-size:1.6rem; white-space:nowrap; color:${isDark ? '#f0c070' : '#3d1a0e'};`">Discover Your Style</h2>
+          <h2 :style="`font-family:'Playfair Display',serif; font-size:1.6rem; white-space:nowrap; color:${isDark ? '#f0c070' : '#3d1a0e'};`">
+            Results for "{{ searchQuery }}"
+          </h2>
           <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
         </div>
-        <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div v-for="n in 4" :key="n" class="rounded-2xl overflow-hidden animate-pulse" :style="`background:${isDark ? '#1a1a1a' : '#ede0d4'};`">
-            <div :style="`height:180px; background:${isDark ? '#2a2a2a' : '#d4b896'};`"></div>
-            <div class="p-3 space-y-2">
-              <div :style="`height:10px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:50%;`"></div>
-              <div :style="`height:12px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:80%;`"></div>
-            </div>
-          </div>
-        </div>
-        <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <ProductCard
-            v-for="(product, index) in clothingProducts"
-            :key="product.id" :product="product" :is-dark="isDark"
-            :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
-            @add-to-cart="addToCart" @view-detail="openDetail"
-          />
-        </div>
-      </section>
 
-      <!-- Featured Jewellery -->
-      <section class="mb-16">
-        <div class="rounded-2xl mb-8 px-8 py-6 flex items-center justify-between flex-wrap gap-4"
-          :style="isDark ? 'background:linear-gradient(90deg,#1c1008,#2e1f0e); border:1px solid #3a2a10;' : 'background:linear-gradient(90deg,#7a4a2e,#a0673a);'"
-        >
-          <div>
-            <p class="uppercase tracking-widest text-xs mb-1" style="color:#f0c070;">Limited Edition</p>
-            <h3 :style="`font-family:'Playfair Display',serif; font-size:1.5rem; color:${isDark ? '#f0c070' : '#fff5e6'};`">Featured Jewellery</h3>
-          </div>
-          <button @click="activeCategory = 'jewellery'"
-            style="border:1px solid #f0c070; color:#f0c070; background:transparent; padding:8px 24px; font-size:0.8rem; letter-spacing:0.12em; border-radius:50px; cursor:pointer;">
-            VIEW ALL
-          </button>
+        <div v-if="filteredProducts.length === 0" class="text-center py-20"
+          :style="`color:${isDark ? '#6b4226' : '#a0826d'};`">
+          <p class="text-4xl mb-3">🔍</p>
+          <p class="text-lg font-medium">No products found for "{{ searchQuery }}"</p>
         </div>
-        <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div v-for="n in 4" :key="n" class="rounded-2xl overflow-hidden animate-pulse" :style="`background:${isDark ? '#1a1a1a' : '#ede0d4'};`">
-            <div :style="`height:180px; background:${isDark ? '#2a2a2a' : '#d4b896'};`"></div>
-            <div class="p-3 space-y-2">
-              <div :style="`height:10px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:50%;`"></div>
-              <div :style="`height:12px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:80%;`"></div>
-            </div>
-          </div>
-        </div>
-        <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <ProductCard
-            v-for="(product, index) in jewelleryProducts"
-            :key="product.id" :product="product" :is-dark="isDark"
-            :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
-            @add-to-cart="addToCart" @view-detail="openDetail"
-          />
-        </div>
-      </section>
 
-      <!-- All Products -->
-      <section>
-        <div class="flex items-center gap-4 mb-6">
-          <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
-          <h2 :style="`font-family:'Playfair Display',serif; font-size:1.6rem; white-space:nowrap; color:${isDark ? '#f0c070' : '#3d1a0e'};`">All Products</h2>
-          <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
-        </div>
-        <div class="flex gap-2 mb-8 flex-wrap">
-          <button
-            v-for="tab in [
-              { key: 'all',       label: 'All Items' },
-              { key: 'clothing',  label: '👕 Clothing & Accessories' },
-              { key: 'jewellery', label: '💍 Jewellery' },
-            ]"
-            :key="tab.key"
-            @click="activeCategory = tab.key as any"
-            :style="activeCategory === tab.key
-              ? (isDark ? 'background:#f0c070; color:#3d1a0e; border-color:#f0c070;' : 'background:#7a4a2e; color:#f0c070; border-color:#7a4a2e;')
-              : (isDark ? 'background:#1a1a1a; color:#a08060; border-color:#3a2e22;' : 'background:white; color:#6b4226; border-color:#d4b896;')"
-            style="padding:6px 20px; border-radius:50px; font-size:0.85rem; font-weight:500; border:1px solid; cursor:pointer; transition:all 0.2s;"
-          >{{ tab.label }}</button>
-        </div>
-        <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <div v-for="n in 8" :key="n" class="rounded-2xl overflow-hidden animate-pulse" :style="`background:${isDark ? '#1a1a1a' : '#ede0d4'};`">
-            <div :style="`height:208px; background:${isDark ? '#2a2a2a' : '#d4b896'};`"></div>
-            <div class="p-4 space-y-3">
-              <div :style="`height:10px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:33%;`"></div>
-              <div :style="`height:14px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:80%;`"></div>
-            </div>
-          </div>
-        </div>
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <ProductCard
             v-for="(product, index) in filteredProducts"
@@ -431,12 +344,117 @@ onMounted(() => {
             @add-to-cart="addToCart" @view-detail="openDetail"
           />
         </div>
-        <div v-if="!loading && filteredProducts.length === 0" class="text-center py-20"
-          :style="`color:${isDark ? '#6b4226' : '#a0826d'};`">
-          <p class="text-4xl mb-3">🛍️</p>
-          <p class="text-lg font-medium">No products found.</p>
-        </div>
       </section>
+
+      <!-- Normal sections — search නැති වෙලා show කරනවා -->
+      <template v-else>
+
+        <!-- Discover Your Style -->
+        <section class="mb-16">
+          <div class="flex items-center gap-4 mb-6">
+            <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
+            <h2 :style="`font-family:'Playfair Display',serif; font-size:1.6rem; white-space:nowrap; color:${isDark ? '#f0c070' : '#3d1a0e'};`">Discover Your Style</h2>
+            <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
+          </div>
+          <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div v-for="n in 4" :key="n" class="rounded-2xl overflow-hidden animate-pulse" :style="`background:${isDark ? '#1a1a1a' : '#ede0d4'};`">
+              <div :style="`height:180px; background:${isDark ? '#2a2a2a' : '#d4b896'};`"></div>
+              <div class="p-3 space-y-2">
+                <div :style="`height:10px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:50%;`"></div>
+                <div :style="`height:12px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:80%;`"></div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <ProductCard
+              v-for="(product, index) in clothingProducts"
+              :key="product.id" :product="product" :is-dark="isDark"
+              :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
+              @add-to-cart="addToCart" @view-detail="openDetail"
+            />
+          </div>
+        </section>
+
+        <!-- Featured Jewellery -->
+        <section class="mb-16">
+          <div class="rounded-2xl mb-8 px-8 py-6 flex items-center justify-between flex-wrap gap-4"
+            :style="isDark ? 'background:linear-gradient(90deg,#1c1008,#2e1f0e); border:1px solid #3a2a10;' : 'background:linear-gradient(90deg,#7a4a2e,#a0673a);'"
+          >
+            <div>
+              <p class="uppercase tracking-widest text-xs mb-1" style="color:#f0c070;">Limited Edition</p>
+              <h3 :style="`font-family:'Playfair Display',serif; font-size:1.5rem; color:${isDark ? '#f0c070' : '#fff5e6'};`">Featured Jewellery</h3>
+            </div>
+            <button @click="activeCategory = 'jewellery'"
+              style="border:1px solid #f0c070; color:#f0c070; background:transparent; padding:8px 24px; font-size:0.8rem; letter-spacing:0.12em; border-radius:50px; cursor:pointer;">
+              VIEW ALL
+            </button>
+          </div>
+          <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div v-for="n in 4" :key="n" class="rounded-2xl overflow-hidden animate-pulse" :style="`background:${isDark ? '#1a1a1a' : '#ede0d4'};`">
+              <div :style="`height:180px; background:${isDark ? '#2a2a2a' : '#d4b896'};`"></div>
+              <div class="p-3 space-y-2">
+                <div :style="`height:10px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:50%;`"></div>
+                <div :style="`height:12px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:80%;`"></div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <ProductCard
+              v-for="(product, index) in jewelleryProducts"
+              :key="product.id" :product="product" :is-dark="isDark"
+              :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
+              @add-to-cart="addToCart" @view-detail="openDetail"
+            />
+          </div>
+        </section>
+
+        <!-- All Products -->
+        <section>
+          <div class="flex items-center gap-4 mb-6">
+            <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
+            <h2 :style="`font-family:'Playfair Display',serif; font-size:1.6rem; white-space:nowrap; color:${isDark ? '#f0c070' : '#3d1a0e'};`">All Products</h2>
+            <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
+          </div>
+          <div class="flex gap-2 mb-8 flex-wrap">
+            <button
+              v-for="tab in [
+                { key: 'all',       label: 'All Items' },
+                { key: 'clothing',  label: '👕 Clothing & Accessories' },
+                { key: 'jewellery', label: '💍 Jewellery' },
+              ]"
+              :key="tab.key"
+              @click="activeCategory = tab.key as any"
+              :style="activeCategory === tab.key
+                ? (isDark ? 'background:#f0c070; color:#3d1a0e; border-color:#f0c070;' : 'background:#7a4a2e; color:#f0c070; border-color:#7a4a2e;')
+                : (isDark ? 'background:#1a1a1a; color:#a08060; border-color:#3a2e22;' : 'background:white; color:#6b4226; border-color:#d4b896;')"
+              style="padding:6px 20px; border-radius:50px; font-size:0.85rem; font-weight:500; border:1px solid; cursor:pointer; transition:all 0.2s;"
+            >{{ tab.label }}</button>
+          </div>
+          <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div v-for="n in 8" :key="n" class="rounded-2xl overflow-hidden animate-pulse" :style="`background:${isDark ? '#1a1a1a' : '#ede0d4'};`">
+              <div :style="`height:208px; background:${isDark ? '#2a2a2a' : '#d4b896'};`"></div>
+              <div class="p-4 space-y-3">
+                <div :style="`height:10px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:33%;`"></div>
+                <div :style="`height:14px; background:${isDark ? '#2a2a2a' : '#d4b896'}; border-radius:99px; width:80%;`"></div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <ProductCard
+              v-for="(product, index) in filteredProducts"
+              :key="product.id" :product="product" :is-dark="isDark"
+              :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
+              @add-to-cart="addToCart" @view-detail="openDetail"
+            />
+          </div>
+          <div v-if="!loading && filteredProducts.length === 0" class="text-center py-20"
+            :style="`color:${isDark ? '#6b4226' : '#a0826d'};`">
+            <p class="text-4xl mb-3">🛍️</p>
+            <p class="text-lg font-medium">No products found.</p>
+          </div>
+        </section>
+
+      </template>
     </main>
 
     <footer class="mt-16 py-8 text-center text-sm transition-colors duration-300"
