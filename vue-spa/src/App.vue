@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import type { Product, ProductResponse, CartItem } from './type';
 import NavBar from './components/NavBar.vue';
 import ProductCard from './components/ProductCard.vue';
@@ -24,58 +24,38 @@ interface AuthResponse {
 // ─────────────────────────────────────────
 // Auth State
 // ─────────────────────────────────────────
-const showAuthModal  = ref(false);
-const isLoginMode    = ref(true);
-const isLoggedIn     = ref(false);
-const authLoading    = ref(false);
-const authError      = ref('');
-const loggedInUser   = ref<AuthResponse | null>(null);
+const showAuthModal = ref(false);
+const isLoginMode   = ref(true);
+const isLoggedIn    = ref(false);
+const authLoading   = ref(false);
+const authError     = ref('');
+const loggedInUser  = ref<AuthResponse | null>(null);
+const authForm      = ref({ username: '', password: '' });
 
-const authForm = ref({ username: '', password: '' });
-
-// Check localStorage on mount — persist login across refresh
-onMounted(() => {
-  const token = localStorage.getItem('gc_token');
-  const user  = localStorage.getItem('gc_user');
-  if (token && user) {
-    isLoggedIn.value  = true;
-    loggedInUser.value = JSON.parse(user) as AuthResponse;
-  }
-});
-
-// ── Real DummyJSON /auth/login ──
 const handleLogin = async () => {
   authError.value   = '';
   authLoading.value = true;
-
   try {
     const res = await fetch('https://dummyjson.com/auth/login', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username:          authForm.value.username,
-        password:          authForm.value.password,
-        expiresInMins:     60,
+        username:      authForm.value.username,
+        password:      authForm.value.password,
+        expiresInMins: 60,
       }),
     });
-
     if (!res.ok) {
-      // DummyJSON returns 400 for wrong credentials
       const err = await res.json();
       throw new Error(err.message || 'Invalid credentials');
     }
-
     const data: AuthResponse = await res.json();
-
-    // Store JWT token + user in localStorage
     localStorage.setItem('gc_token', data.token);
     localStorage.setItem('gc_user',  JSON.stringify(data));
-
-    isLoggedIn.value   = true;
-    loggedInUser.value = data;
+    isLoggedIn.value    = true;
+    loggedInUser.value  = data;
     showAuthModal.value = false;
     authForm.value      = { username: '', password: '' };
-
   } catch (err: unknown) {
     authError.value = err instanceof Error ? err.message : 'Login failed. Try again.';
   } finally {
@@ -91,10 +71,31 @@ const logout = () => {
 };
 
 // ─────────────────────────────────────────
-// Cart State
+// ✅ Cart State — localStorage persistent
 // ─────────────────────────────────────────
-const cartOpen  = ref(false);
-const cartItems = ref<CartItem[]>([]);
+const cartOpen = ref(false);
+
+// ✅ FIX: ref() වලට factory function දෙන්න බෑ
+// loadCart() කියලා වෙනම function එකක් හදලා call කරනවා
+const loadCart = (): CartItem[] => {
+  try {
+    const saved = localStorage.getItem('gc_cart');
+    return saved ? (JSON.parse(saved) as CartItem[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const cartItems = ref<CartItem[]>(loadCart());
+
+// ✅ Cart change වෙන සෑම විටම localStorage වල save කරනවා
+watch(
+  cartItems,
+  (newItems) => {
+    localStorage.setItem('gc_cart', JSON.stringify(newItems));
+  },
+  { deep: true }
+);
 
 const cartCount = computed(() =>
   cartItems.value.reduce((sum, item) => sum + item.quantity, 0)
@@ -115,14 +116,19 @@ const addToCart = (product: Product) => {
   }
 };
 
-const increaseQty    = (id: number) => {
+const increaseQty = (id: number) => {
   const item = cartItems.value.find(i => i.id === id);
   if (item) item.quantity++;
 };
-const decreaseQty    = (id: number) => {
+
+const decreaseQty = (id: number) => {
   const item = cartItems.value.find(i => i.id === id);
-  if (item) { if (item.quantity <= 1) removeFromCart(id); else item.quantity--; }
+  if (item) {
+    if (item.quantity <= 1) removeFromCart(id);
+    else item.quantity--;
+  }
 };
+
 const removeFromCart = (id: number) => {
   cartItems.value = cartItems.value.filter(i => i.id !== id);
 };
@@ -191,7 +197,16 @@ const jewelleryProducts = computed(() =>
   products.value.filter(p => p.category === 'womens-jewellery').slice(0, 4)
 );
 
-onMounted(() => fetchProducts());
+// ✅ Mount — auth restore + fetch products
+onMounted(() => {
+  const token = localStorage.getItem('gc_token');
+  const user  = localStorage.getItem('gc_user');
+  if (token && user) {
+    isLoggedIn.value   = true;
+    loggedInUser.value = JSON.parse(user) as AuthResponse;
+  }
+  fetchProducts();
+});
 </script>
 
 <template>
@@ -228,11 +243,9 @@ onMounted(() => fetchProducts());
       @add-to-cart="addToCart"
     />
 
-    <!-- ✅ Auth Modal -->
+    <!-- Auth Modal -->
     <div v-if="showAuthModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div :class="['rounded-2xl p-8 w-full max-w-md shadow-2xl fade-in-up border', isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-[#d4b896]']">
-
-        <!-- Header -->
         <div class="flex justify-between items-center mb-6">
           <h2 :style="`font-family:'Playfair Display',serif; font-size:1.8rem; color:${isDark ? '#f0c070' : '#3d1a0e'};`">
             {{ isLoginMode ? 'Welcome Back' : 'Register' }}
@@ -243,51 +256,30 @@ onMounted(() => fetchProducts());
           >&times;</button>
         </div>
 
-        <!-- ✅ Real Login Form -->
-        <form v-if="isLoginMode" @submit.prevent="handleLogin" class="space-y-4">
-
-          <!-- DummyJSON test credentials hint -->
+        <form v-if="!isLoggedIn" @submit.prevent="handleLogin" class="space-y-4">
           <div class="rounded-xl p-3 text-xs" :style="isDark ? 'background:#1a1a1a; color:#888;' : 'background:#f5ede4; color:#7a6050;'">
-            💡 Test credentials — username: <strong>emilys</strong> &nbsp; password: <strong>emilyspass</strong>
+            💡 Test — username: <strong>emilys</strong> &nbsp; password: <strong>emilyspass</strong>
           </div>
-
           <div>
             <label :class="['block text-xs font-bold uppercase mb-1', isDark ? 'text-gray-400' : 'text-gray-500']">Username</label>
-            <input
-              v-model="authForm.username"
-              type="text"
+            <input v-model="authForm.username" type="text"
               :class="['w-full p-3 rounded-lg border focus:outline-none transition-colors', isDark ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500 focus:border-amber-500' : 'bg-white border-gray-200 text-gray-900 focus:border-[#7a4a2e]']"
-              placeholder="Enter username"
-              required
-            />
+              placeholder="Enter username" required />
           </div>
-
           <div>
             <label :class="['block text-xs font-bold uppercase mb-1', isDark ? 'text-gray-400' : 'text-gray-500']">Password</label>
-            <input
-              v-model="authForm.password"
-              type="password"
+            <input v-model="authForm.password" type="password"
               :class="['w-full p-3 rounded-lg border focus:outline-none transition-colors', isDark ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500 focus:border-amber-500' : 'bg-white border-gray-200 text-gray-900 focus:border-[#7a4a2e]']"
-              placeholder="••••••••"
-              required
-            />
+              placeholder="••••••••" required />
           </div>
-
-          <!-- Error message -->
           <p v-if="authError" class="text-sm text-rose-500 font-medium">⚠ {{ authError }}</p>
-
-          <!-- Submit -->
-          <button
-            type="submit"
-            :disabled="authLoading"
+          <button type="submit" :disabled="authLoading"
             class="w-full py-4 rounded-full font-bold transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            :style="isDark ? 'background:#f0c070; color:#3d1a0e;' : 'background:#7a4a2e; color:#f0c070;'"
-          >
+            :style="isDark ? 'background:#f0c070; color:#3d1a0e;' : 'background:#7a4a2e; color:#f0c070;'">
             {{ authLoading ? 'Signing in...' : 'Sign In' }}
           </button>
         </form>
 
-        <!-- ✅ Logged In State shown inside modal if somehow opened -->
         <div v-if="isLoggedIn && loggedInUser" class="text-center space-y-4">
           <img :src="loggedInUser.image" class="w-16 h-16 rounded-full mx-auto border-2 border-amber-400" />
           <p :style="`font-family:'Playfair Display',serif; font-size:1.1rem; color:${isDark ? '#f0c070' : '#3d1a0e'};`">
@@ -295,8 +287,7 @@ onMounted(() => fetchProducts());
           </p>
           <button @click="logout(); showAuthModal = false"
             class="w-full py-3 rounded-full font-bold text-sm transition-all active:scale-95"
-            style="background:#ef4444; color:#fff;"
-          >
+            style="background:#ef4444; color:#fff;">
             Log Out
           </button>
         </div>
@@ -313,21 +304,13 @@ onMounted(() => fetchProducts());
       </div>
     </div>
 
-    <!-- ✅ Logged-in user greeting in top (optional small banner) -->
-    <div
-      v-if="isLoggedIn && loggedInUser"
+    <!-- Logged-in welcome banner -->
+    <div v-if="isLoggedIn && loggedInUser"
       class="flex items-center justify-between px-6 py-2 text-xs"
       :style="isDark ? 'background:#1a1108; color:#f0c070; border-bottom:1px solid #2a1f10;' : 'background:#f5ede4; color:#7a4a2e; border-bottom:1px solid #e8d5c0;'"
     >
-      <span>
-        👋 Welcome back, <strong>{{ loggedInUser.firstName }} {{ loggedInUser.lastName }}</strong>!
-      </span>
-      <button
-        @click="logout"
-        class="font-semibold underline text-xs transition-opacity hover:opacity-70"
-      >
-        Log Out
-      </button>
+      <span>👋 Welcome back, <strong>{{ loggedInUser.firstName }} {{ loggedInUser.lastName }}</strong>!</span>
+      <button @click="logout" class="font-semibold underline text-xs transition-opacity hover:opacity-70">Log Out</button>
     </div>
 
     <!-- Hero -->
@@ -354,9 +337,7 @@ onMounted(() => fetchProducts());
       <section class="mb-16">
         <div class="flex items-center gap-4 mb-6">
           <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
-          <h2 :style="`font-family:'Playfair Display',serif; font-size:1.6rem; white-space:nowrap; color:${isDark ? '#f0c070' : '#3d1a0e'};`">
-            Discover Your Style
-          </h2>
+          <h2 :style="`font-family:'Playfair Display',serif; font-size:1.6rem; white-space:nowrap; color:${isDark ? '#f0c070' : '#3d1a0e'};`">Discover Your Style</h2>
           <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
         </div>
         <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -371,13 +352,9 @@ onMounted(() => fetchProducts());
         <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <ProductCard
             v-for="(product, index) in clothingProducts"
-            :key="product.id"
-            :product="product"
-            :is-dark="isDark"
-            :style="{ animationDelay: `${index * 55}ms` }"
-            class="fade-in-up"
-            @add-to-cart="addToCart"
-            @view-detail="openDetail"
+            :key="product.id" :product="product" :is-dark="isDark"
+            :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
+            @add-to-cart="addToCart" @view-detail="openDetail"
           />
         </div>
       </section>
@@ -408,13 +385,9 @@ onMounted(() => fetchProducts());
         <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <ProductCard
             v-for="(product, index) in jewelleryProducts"
-            :key="product.id"
-            :product="product"
-            :is-dark="isDark"
-            :style="{ animationDelay: `${index * 55}ms` }"
-            class="fade-in-up"
-            @add-to-cart="addToCart"
-            @view-detail="openDetail"
+            :key="product.id" :product="product" :is-dark="isDark"
+            :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
+            @add-to-cart="addToCart" @view-detail="openDetail"
           />
         </div>
       </section>
@@ -453,13 +426,9 @@ onMounted(() => fetchProducts());
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <ProductCard
             v-for="(product, index) in filteredProducts"
-            :key="product.id"
-            :product="product"
-            :is-dark="isDark"
-            :style="{ animationDelay: `${index * 55}ms` }"
-            class="fade-in-up"
-            @add-to-cart="addToCart"
-            @view-detail="openDetail"
+            :key="product.id" :product="product" :is-dark="isDark"
+            :style="{ animationDelay: `${index * 55}ms` }" class="fade-in-up"
+            @add-to-cart="addToCart" @view-detail="openDetail"
           />
         </div>
         <div v-if="!loading && filteredProducts.length === 0" class="text-center py-20"
