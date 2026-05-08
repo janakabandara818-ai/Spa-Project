@@ -47,7 +47,7 @@ const handleLogin = async () => {
     });
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.message || 'Invalid credentials');
+      throw new Error((err as { message?: string }).message || 'Invalid credentials');
     }
     const data: AuthResponse = await res.json();
     localStorage.setItem('gc_token', data.token);
@@ -71,7 +71,7 @@ const logout = () => {
 };
 
 // ─────────────────────────────────────────
-// Cart State — localStorage persistent
+// ✅ Cart State — localStorage persistent
 // ─────────────────────────────────────────
 const cartOpen = ref(false);
 
@@ -79,40 +79,63 @@ const loadCart = (): CartItem[] => {
   try {
     const saved = localStorage.getItem('gc_cart');
     return saved ? (JSON.parse(saved) as CartItem[]) : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 };
 
 const cartItems = ref<CartItem[]>(loadCart());
 
-watch(cartItems, (newItems) => {
-  localStorage.setItem('gc_cart', JSON.stringify(newItems));
-}, { deep: true });
-
-const cartCount = computed(() =>
-  cartItems.value.reduce((sum, item) => sum + item.quantity, 0)
+watch(
+  cartItems,
+  (newItems: CartItem[]) => {
+    localStorage.setItem('gc_cart', JSON.stringify(newItems));
+  },
+  { deep: true }
 );
 
-const addToCart = (product: Product) => {
-  const existing = cartItems.value.find(i => i.id === product.id);
-  if (existing) { existing.quantity++; }
-  else {
+const cartCount = computed((): number =>
+  cartItems.value.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
+);
+
+const addToCart = (product: Product): void => {
+  const existing = cartItems.value.find((i: CartItem) => i.id === product.id);
+  if (existing) {
+    existing.quantity++;
+  } else {
     cartItems.value.push({
-      id: product.id, title: product.title,
-      price: product.price, thumbnail: product.thumbnail, quantity: 1,
+      id:        product.id,
+      title:     product.title,
+      price:     product.price,
+      thumbnail: product.thumbnail,
+      quantity:  1,
     });
   }
 };
 
-const increaseQty    = (id: number) => { const item = cartItems.value.find(i => i.id === id); if (item) item.quantity++; };
-const decreaseQty    = (id: number) => { const item = cartItems.value.find(i => i.id === id); if (item) { if (item.quantity <= 1) removeFromCart(id); else item.quantity--; } };
-const removeFromCart = (id: number) => { cartItems.value = cartItems.value.filter(i => i.id !== id); };
+const increaseQty = (id: number): void => {
+  const item = cartItems.value.find((i: CartItem) => i.id === id);
+  if (item) item.quantity++;
+};
+
+const decreaseQty = (id: number): void => {
+  const item = cartItems.value.find((i: CartItem) => i.id === id);
+  if (item) {
+    if (item.quantity <= 1) removeFromCart(id);
+    else item.quantity--;
+  }
+};
+
+const removeFromCart = (id: number): void => {
+  cartItems.value = cartItems.value.filter((i: CartItem) => i.id !== id);
+};
 
 // ─────────────────────────────────────────
 // Detail Modal
 // ─────────────────────────────────────────
 const selectedProduct = ref<Product | null>(null);
-const openDetail  = (product: Product) => { selectedProduct.value = product; };
-const closeDetail = () => { selectedProduct.value = null; };
+const openDetail  = (product: Product): void => { selectedProduct.value = product; };
+const closeDetail = (): void => { selectedProduct.value = null; };
 
 // ─────────────────────────────────────────
 // Product + Search State
@@ -123,16 +146,16 @@ const isDark         = ref(false);
 const activeCategory = ref<'all' | 'clothing' | 'jewellery'>('all');
 const searchQuery    = ref('');
 
-const handleSearch = (query: string) => {
+const handleSearch = (query: string): void => {
   searchQuery.value = query.trim().toLowerCase();
 };
 
-const toggleDark = () => {
+const toggleDark = (): void => {
   isDark.value = !isDark.value;
   document.documentElement.classList.toggle('dark', isDark.value);
 };
 
-const fetchProducts = async () => {
+const fetchProducts = async (): Promise<void> => {
   loading.value = true;
   try {
     const [clothingRes, shoesRes, watchesRes, jewelleryRes] = await Promise.all([
@@ -148,40 +171,47 @@ const fetchProducts = async () => {
       jewelleryRes.json() as Promise<ProductResponse>,
     ]);
     products.value = [
-      ...clothing.products, ...shoes.products,
-      ...watches.products,  ...jewellery.products,
+      ...clothing.products,
+      ...shoes.products,
+      ...watches.products,
+      ...jewellery.products,
     ];
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching products:', error);
   } finally {
     loading.value = false;
   }
 };
 
-const filteredProducts = computed(() => {
+const filteredProducts = computed((): Product[] => {
   let result = products.value;
   if (activeCategory.value === 'clothing')
-    result = result.filter(p => ['mens-shirts','mens-shoes','mens-watches'].includes(p.category));
+    result = result.filter((p: Product) => ['mens-shirts','mens-shoes','mens-watches'].includes(p.category));
   else if (activeCategory.value === 'jewellery')
-    result = result.filter(p => p.category === 'womens-jewellery');
+    result = result.filter((p: Product) => p.category === 'womens-jewellery');
   if (searchQuery.value) {
-    result = result.filter(p =>
+    result = result.filter((p: Product) =>
       p.title.toLowerCase().includes(searchQuery.value) ||
-      p.brand?.toLowerCase().includes(searchQuery.value) ||
+      (p.brand?.toLowerCase() ?? '').includes(searchQuery.value) ||
       p.category.toLowerCase().includes(searchQuery.value)
     );
   }
   return result;
 });
 
-const clothingProducts = computed(() =>
-  products.value.filter(p => ['mens-shirts','mens-shoes','mens-watches'].includes(p.category)).slice(0, 4)
-);
-const jewelleryProducts = computed(() =>
-  products.value.filter(p => p.category === 'womens-jewellery').slice(0, 4)
+const clothingProducts = computed((): Product[] =>
+  products.value
+    .filter((p: Product) => ['mens-shirts','mens-shoes','mens-watches'].includes(p.category))
+    .slice(0, 4)
 );
 
-onMounted(() => {
+const jewelleryProducts = computed((): Product[] =>
+  products.value
+    .filter((p: Product) => p.category === 'womens-jewellery')
+    .slice(0, 4)
+);
+
+onMounted((): void => {
   const token = localStorage.getItem('gc_token');
   const user  = localStorage.getItem('gc_user');
   if (token && user) {
@@ -199,7 +229,6 @@ onMounted(() => {
     style="font-family:'DM Sans',sans-serif;"
   >
 
-    <!-- ✅ isLoggedIn + loggedInUser props pass කරනවා, @logout handle කරනවා -->
     <NavBar
       :is-dark="isDark"
       :cart-count="cartCount"
@@ -260,7 +289,6 @@ onMounted(() => {
           </button>
         </form>
 
-        <!-- Already logged in view inside modal -->
         <div v-if="isLoggedIn && loggedInUser" class="text-center space-y-4">
           <img :src="loggedInUser.image" class="w-16 h-16 rounded-full mx-auto border-2 border-amber-400" />
           <p :style="`font-family:'Playfair Display',serif; font-size:1.1rem; color:${isDark ? '#f0c070' : '#3d1a0e'};`">
@@ -401,7 +429,7 @@ onMounted(() => {
                 { key: 'jewellery', label: '💍 Jewellery' },
               ]"
               :key="tab.key"
-              @click="activeCategory = tab.key as any"
+              @click="activeCategory = tab.key as 'all' | 'clothing' | 'jewellery'"
               :style="activeCategory === tab.key
                 ? (isDark ? 'background:#f0c070; color:#3d1a0e; border-color:#f0c070;' : 'background:#7a4a2e; color:#f0c070; border-color:#7a4a2e;')
                 : (isDark ? 'background:#1a1a1a; color:#a08060; border-color:#3a2e22;' : 'background:white; color:#6b4226; border-color:#d4b896;')"
