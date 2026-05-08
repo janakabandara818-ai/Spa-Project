@@ -1,7 +1,15 @@
 <script setup lang="ts">
+interface AuthUser {
+  firstName: string;
+  lastName: string;
+  image: string;
+}
+
 defineProps<{
   isDark: boolean;
   cartCount: number;
+  isLoggedIn: boolean;
+  loggedInUser: AuthUser | null;
 }>();
 
 const emit = defineEmits<{
@@ -9,6 +17,7 @@ const emit = defineEmits<{
   (e: 'open-login'): void;
   (e: 'open-cart'): void;
   (e: 'search', query: string): void;
+  (e: 'logout'): void;
 }>();
 
 const goHome = () => {
@@ -23,6 +32,7 @@ const goHome = () => {
       ? 'bg-gray-950/95 border-gray-800 text-white'
       : 'bg-[#3d2b1f]/95 border-[#5a3e2b] text-white'
   ]">
+
     <!-- Logo -->
     <div
       class="flex items-center gap-2 cursor-pointer select-none"
@@ -36,12 +46,12 @@ const goHome = () => {
           <path d="M2 13l3 3 3.5-4L12 16l3.5-4L19 15l3-2-1 5H3l-1-5z"/>
         </svg>
       </div>
-      <h1 style="font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; line-height: 1;">
+      <h1 style="font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:700; letter-spacing:-0.5px; line-height:1;">
         <span class="text-amber-400">Golden</span><span class="text-white"> Crest</span>
       </h1>
     </div>
 
-    <!-- ✅ Search — type කළාම emit('search') fire වෙනවා -->
+    <!-- Search -->
     <div class="relative hidden sm:block">
       <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
       <input
@@ -59,6 +69,7 @@ const goHome = () => {
 
     <!-- Actions -->
     <div class="flex items-center gap-3">
+
       <!-- Dark mode toggle -->
       <button
         @click="emit('toggle-dark')"
@@ -89,13 +100,39 @@ const goHome = () => {
         </span>
       </button>
 
-      <!-- Login -->
+      <!-- ✅ NOT logged in → Login button -->
       <button
+        v-if="!isLoggedIn"
         @click="emit('open-login')"
         class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all hover:shadow-lg hover:shadow-amber-500/25 active:scale-95"
       >
         Login
       </button>
+
+      <!-- ✅ Logged in → avatar + name + logout -->
+      <div v-else-if="loggedInUser" class="flex items-center gap-2">
+        <!-- Avatar -->
+        <img
+          :src="loggedInUser.image"
+          :alt="loggedInUser.firstName"
+          class="w-8 h-8 rounded-full border-2 border-amber-400 object-cover"
+        />
+        <!-- Name — hidden on small screens -->
+        <span class="hidden md:block text-sm font-medium text-amber-300">
+          {{ loggedInUser.firstName }}
+        </span>
+        <!-- Logout button -->
+        <button
+          @click="emit('logout')"
+          class="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-105 active:scale-95"
+          :style="isDark
+            ? 'background:#2a0f0f; color:#f87171; border:1px solid #3a1a1a;'
+            : 'background:#fef2f2; color:#ef4444; border:1px solid #fecaca;'"
+        >
+          Logout
+        </button>
+      </div>
+
     </div>
   </nav>
 </template>

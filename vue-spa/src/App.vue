@@ -79,18 +79,14 @@ const loadCart = (): CartItem[] => {
   try {
     const saved = localStorage.getItem('gc_cart');
     return saved ? (JSON.parse(saved) as CartItem[]) : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 };
 
 const cartItems = ref<CartItem[]>(loadCart());
 
-watch(
-  cartItems,
-  (newItems) => { localStorage.setItem('gc_cart', JSON.stringify(newItems)); },
-  { deep: true }
-);
+watch(cartItems, (newItems) => {
+  localStorage.setItem('gc_cart', JSON.stringify(newItems));
+}, { deep: true });
 
 const cartCount = computed(() =>
   cartItems.value.reduce((sum, item) => sum + item.quantity, 0)
@@ -125,9 +121,7 @@ const products       = ref<Product[]>([]);
 const loading        = ref(false);
 const isDark         = ref(false);
 const activeCategory = ref<'all' | 'clothing' | 'jewellery'>('all');
-
-// ✅ Search query state
-const searchQuery = ref('');
+const searchQuery    = ref('');
 
 const handleSearch = (query: string) => {
   searchQuery.value = query.trim().toLowerCase();
@@ -164,17 +158,12 @@ const fetchProducts = async () => {
   }
 };
 
-// ✅ filteredProducts — category filter + search query දෙකම apply කරනවා
 const filteredProducts = computed(() => {
   let result = products.value;
-
-  // Step 1: category filter
   if (activeCategory.value === 'clothing')
     result = result.filter(p => ['mens-shirts','mens-shoes','mens-watches'].includes(p.category));
   else if (activeCategory.value === 'jewellery')
     result = result.filter(p => p.category === 'womens-jewellery');
-
-  // Step 2: search filter — title, brand, category match කරනවා
   if (searchQuery.value) {
     result = result.filter(p =>
       p.title.toLowerCase().includes(searchQuery.value) ||
@@ -182,7 +171,6 @@ const filteredProducts = computed(() => {
       p.category.toLowerCase().includes(searchQuery.value)
     );
   }
-
   return result;
 });
 
@@ -211,14 +199,17 @@ onMounted(() => {
     style="font-family:'DM Sans',sans-serif;"
   >
 
-    <!-- ✅ @search event listen කරනවා -->
+    <!-- ✅ isLoggedIn + loggedInUser props pass කරනවා, @logout handle කරනවා -->
     <NavBar
       :is-dark="isDark"
       :cart-count="cartCount"
+      :is-logged-in="isLoggedIn"
+      :logged-in-user="loggedInUser"
       @toggle-dark="toggleDark"
       @open-login="showAuthModal = true"
       @open-cart="cartOpen = true"
       @search="handleSearch"
+      @logout="logout"
     />
 
     <CartDrawer
@@ -269,6 +260,7 @@ onMounted(() => {
           </button>
         </form>
 
+        <!-- Already logged in view inside modal -->
         <div v-if="isLoggedIn && loggedInUser" class="text-center space-y-4">
           <img :src="loggedInUser.image" class="w-16 h-16 rounded-full mx-auto border-2 border-amber-400" />
           <p :style="`font-family:'Playfair Display',serif; font-size:1.1rem; color:${isDark ? '#f0c070' : '#3d1a0e'};`">
@@ -279,7 +271,7 @@ onMounted(() => {
             style="background:#ef4444; color:#fff;">Log Out</button>
         </div>
 
-        <div class="text-center mt-6 text-sm">
+        <div v-if="!isLoggedIn" class="text-center mt-6 text-sm">
           <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">
             {{ isLoginMode ? "Don't have an account?" : "Already a member?" }}
           </span>
@@ -289,15 +281,6 @@ onMounted(() => {
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- Logged-in welcome banner -->
-    <div v-if="isLoggedIn && loggedInUser"
-      class="flex items-center justify-between px-6 py-2 text-xs"
-      :style="isDark ? 'background:#1a1108; color:#f0c070; border-bottom:1px solid #2a1f10;' : 'background:#f5ede4; color:#7a4a2e; border-bottom:1px solid #e8d5c0;'"
-    >
-      <span>👋 Welcome back, <strong>{{ loggedInUser.firstName }} {{ loggedInUser.lastName }}</strong>!</span>
-      <button @click="logout" class="font-semibold underline text-xs transition-opacity hover:opacity-70">Log Out</button>
     </div>
 
     <!-- Hero -->
@@ -320,7 +303,7 @@ onMounted(() => {
 
     <main id="shop" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
 
-      <!-- ✅ Search active වෙලා ඉන්නම් search results section show කරනවා -->
+      <!-- Search results -->
       <section v-if="searchQuery" class="mb-16">
         <div class="flex items-center gap-4 mb-6">
           <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
@@ -329,13 +312,10 @@ onMounted(() => {
           </h2>
           <div :style="`flex:1; height:1px; background:${isDark ? '#3a2e22' : '#d4b896'};`"></div>
         </div>
-
-        <div v-if="filteredProducts.length === 0" class="text-center py-20"
-          :style="`color:${isDark ? '#6b4226' : '#a0826d'};`">
+        <div v-if="filteredProducts.length === 0" class="text-center py-20" :style="`color:${isDark ? '#6b4226' : '#a0826d'};`">
           <p class="text-4xl mb-3">🔍</p>
           <p class="text-lg font-medium">No products found for "{{ searchQuery }}"</p>
         </div>
-
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <ProductCard
             v-for="(product, index) in filteredProducts"
@@ -346,9 +326,7 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- Normal sections — search නැති වෙලා show කරනවා -->
       <template v-else>
-
         <!-- Discover Your Style -->
         <section class="mb-16">
           <div class="flex items-center gap-4 mb-6">
@@ -453,7 +431,6 @@ onMounted(() => {
             <p class="text-lg font-medium">No products found.</p>
           </div>
         </section>
-
       </template>
     </main>
 
